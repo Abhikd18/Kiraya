@@ -122,11 +122,14 @@ const stats = computed(() => ({
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <UBadge :color="isExpired(l) && l.status === 'live' ? 'error' : statusColor[l.status]" variant="soft" :label="isExpired(l) && l.status === 'live' ? 'expired' : l.status" />
+              <UBadge :color="l.postedBy === 'broker' ? 'warning' : 'neutral'" variant="outline" :label="l.postedBy === 'broker' ? 'Broker' : 'Owner'" />
+              <UBadge v-if="l.verified" color="success" variant="outline" icon="i-lucide-badge-check" label="Verified" />
               <span class="text-xs text-stone-500">{{ l.views }} views · posted {{ timeAgo(l.createdAt).toLowerCase() }}</span>
             </div>
             <NuxtLink :to="`/property/${l.id}`" class="mt-1 block truncate font-semibold hover:text-orange-600">{{ l.title }}</NuxtLink>
             <p class="text-sm text-stone-500">{{ l.locality }}, {{ l.city }} · {{ formatRent(l.rent) }}/month</p>
             <div class="mt-3 flex flex-wrap gap-2">
+              <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-pencil" :to="`/post?edit=${l.id}`">Edit</UButton>
               <UButton v-if="l.status !== 'live' || isExpired(l)" size="xs" icon="i-lucide-refresh-cw" @click="change(l, 'live')">Make live (30 days)</UButton>
               <UButton v-if="l.status === 'live' && !isExpired(l)" size="xs" color="info" variant="soft" icon="i-lucide-check" @click="change(l, 'rented')">Mark as rented</UButton>
               <UButton v-if="l.status === 'live' && !isExpired(l)" size="xs" color="neutral" variant="soft" icon="i-lucide-pause" @click="change(l, 'paused')">Pause</UButton>

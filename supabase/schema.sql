@@ -197,6 +197,11 @@ create policy "Owners update their phone" on public.listing_contacts
     exists (select 1 from public.listings l where l.id = listing_id and l.owner_id = auth.uid())
   );
 
+-- Admins can fix the phone number when they edit any listing
+drop policy if exists "Admins manage phones" on public.listing_contacts;
+create policy "Admins manage phones" on public.listing_contacts
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
 -- 3. Reports (fake / already rented / broker) -------------------------------
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),

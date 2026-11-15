@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import type { City, ElectricityBilling, Furnishing, NewListing, PgDetails, PropertyType, TenantPreference } from '#shared/types/listing'
 
-useSeoMeta({ title: 'Post your property for free | Kiraya' })
+// /post = new listing, /post?edit=<id> = edit an existing one. Remount when switching between them.
+definePageMeta({ key: route => route.fullPath })
 
-const { user, ready, init } = useAuth()
-const { create, isDemo } = useListings()
+const route = useRoute()
+const editId = typeof route.query.edit === 'string' ? route.query.edit : ''
+const editing = Boolean(editId)
+
+useSeoMeta({ title: editing ? 'Edit your property | Kiraya' : 'Post your property for free | Kiraya' })
+
+const { user, ready, isAdmin, init } = useAuth()
+const { create, update, getById, getOwnerPhone, isDemo } = useListings()
 const toast = useToast()
+const loadingEdit = ref(editing)
 
 onMounted(async () => {
   await init()
-  if (!user.value) navigateTo({ path: '/login', query: { next: '/post' } })
+  if (!user.value) {
+    navigateTo({ path: '/login', query: { next: route.fullPath } })
+    return
+  }
+  if (editing) await loadForEdit()
 })
 
 const CITY_CENTERS: Record<City, [number, number]> = {
@@ -59,9 +71,58 @@ const form = reactive({
 })
 
 watch(user, (u) => {
+  if (editing) return
   if (u && !form.ownerName) form.ownerName = u.name
   if (u?.phone && !form.ownerPhone) form.ownerPhone = u.phone
 }, { immediate: true })
+
+// ---- Edit mode: fill the form from the saved listing ----
+const existingPhotos = ref<string[]>([])
+async function loadForEdit() {
+  try {
+    const l = await getById(editId, { countView: false })
+    if (!l) throw new Error('This listing was not found.')
+    if (l.ownerId !== user.value?.id && !isAdmin.value) throw new Error('You can only edit your own listings.')
+    Object.assign(form, {
+      type: l.type,
+      postedBy: l.postedBy,
+      title: l.title,
+      description: l.description,
+      city: l.city,
+      locality: l.locality,
+      landmark: l.landmark ?? '',
+      address: '',
+      pin: { lat: l.lat, lng: l.lng },
+      bhk: l.bhk,
+      bathrooms: l.bathrooms,
+      areaSqft: l.areaSqft ?? null,
+      floor: l.floor ?? null,
+      totalFloors: l.totalFloors ?? null,
+      furnishing: l.furnishing,
+      furnishingItems: [...l.furnishingItems],
+      amenities: [...l.amenities],
+      tenantPreference: [...l.tenantPreference],
+      vegOnly: l.vegOnly,
+      petsAllowed: l.petsAllowed,
+      pg: l.pg ? { ...l.pg, gateClosing: l.pg.gateClosing ?? '' } : form.pg,
+      houseRules: [...l.houseRules],
+      rent: l.rent,
+      deposit: l.deposit,
+      maintenance: l.maintenance,
+      electricity: l.electricity,
+      negotiable: l.negotiable,
+      availableFrom: l.availableFrom.slice(0, 10),
+      ownerName: l.ownerName,
+      ownerPhone: (await getOwnerPhone(editId)) ?? ''
+    })
+    existingPhotos.value = [...l.photos]
+  } catch (e) {
+    toast.add({ title: 'Can\'t edit this listing', description: (e as Error).message, color: 'error' })
+    navigateTo('/dashboard')
+  } finally {
+    loadingEdit.value = false
+  }
+}
 
 const isRoomType = computed(() => ['pg', 'room', 'shared-room'].includes(form.type))
 const cityItems = CITIES.map(c => ({ label: c, value: c }))
@@ -142,15 +203,21 @@ const files = ref<File[]>([])
 const previews = ref<string[]>([])
 const maxPhotos = computed(() => (isDemo ? 4 : 12))
 
+const photoCount = computed(() => existingPhotos.value.length + files.value.length)
+
 function onFiles(e: Event) {
   const input = e.target as HTMLInputElement
   const picked = Array.from(input.files || []).filter(f => f.type.startsWith('image/'))
   for (const f of picked) {
-    if (files.value.length >= maxPhotos.value) break
+    if (photoCount.value >= maxPhotos.value) break
     files.value.push(f)
     previews.value.push(URL.createObjectURL(f))
   }
   input.value = ''
+}
+
+function removeExisting(i: number) {
+  existingPhotos.value.splice(i, 1)
 }
 
 function removePhoto(i: number) {
@@ -237,11 +304,17 @@ async function submit() {
       pg: form.type === 'pg' ? { ...form.pg, gateClosing: form.pg.gateClosing || undefined } : undefined,
       houseRules: form.houseRules
     }
+    if (editing) {
+      await update(editId, listing, existingPhotos.value, files.value)
+      toast.add({ title: 'Changes saved', color: 'success' })
+      await navigateTo(`/property/${editId}`)
+      return
+    }
     const id = await create(listing, files.value)
     toast.add({ title: 'Your property is live!', description: 'It will stay up for 30 days. Renew it from your dashboard.', color: 'success' })
     await navigateTo(`/property/${id}`)
   } catch (e) {
-    toast.add({ title: 'Could not post property', description: (e as Error).message, color: 'error' })
+    toast.add({ title: editing ? 'Could not save changes' : 'Could not post property', description: (e as Error).message, color: 'error' })
   } finally {
     saving.value = false
   }
@@ -250,13 +323,15 @@ async function submit() {
 
 <template>
   <div class="mx-auto max-w-3xl px-4 py-8">
-    <div v-if="!ready || !user" class="py-20 text-center text-stone-500">
+    <div v-if="!ready || !user || loadingEdit" class="py-20 text-center text-stone-500">
       Loading…
     </div>
 
     <template v-else>
-      <h1 class="text-2xl font-bold sm:text-3xl">Post your property for free</h1>
-      <p class="mt-1 text-stone-500">Takes about 5 minutes. Your listing stays live for 30 days.</p>
+      <h1 class="text-2xl font-bold sm:text-3xl">{{ editing ? 'Edit your property' : 'Post your property for free' }}</h1>
+      <p class="mt-1 text-stone-500">
+        {{ editing ? 'Change anything below, then tap "Save changes" on the last step. You can jump between steps at the top.' : 'Takes about 5 minutes. Your listing stays live for 30 days.' }}
+      </p>
 
       <!-- Progress -->
       <ol class="no-scrollbar mt-6 flex gap-2 overflow-x-auto">
@@ -265,7 +340,7 @@ async function submit() {
             type="button"
             class="w-full min-w-16 rounded-full px-3 py-1.5 text-xs font-medium transition"
             :class="i === step ? 'bg-orange-600 text-white' : i < step ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200' : 'bg-stone-200 text-stone-500 dark:bg-stone-800'"
-            :disabled="i > step"
+            :disabled="!editing && i > step"
             @click="step = i"
           >
             {{ i + 1 }}. {{ s }}
@@ -314,8 +389,8 @@ async function submit() {
             <UFormField label="Landmark" hint="Optional">
               <UInput v-model="form.landmark" placeholder="e.g. Near Sector 35 market" class="w-full" />
             </UFormField>
-            <UFormField label="House no. / full address" hint="Kept private">
-              <UInput v-model="form.address" placeholder="Shared only when you choose" class="w-full" />
+            <UFormField label="House no. / full address" :hint="editing ? 'Kept private. Leave empty to keep the saved one' : 'Kept private'">
+              <UInput v-model="form.address" :placeholder="editing ? 'Saved privately, type only to change it' : 'Shared only when you choose'" class="w-full" />
             </UFormField>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -481,13 +556,19 @@ async function submit() {
           <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-300 p-8 text-center hover:border-orange-400 dark:border-stone-700">
             <UIcon name="i-lucide-image-plus" class="size-10 text-orange-600" />
             <span class="font-medium">Tap to add photos</span>
-            <span class="text-xs text-stone-500">{{ files.length }} / {{ maxPhotos }} added · JPG or PNG</span>
+            <span class="text-xs text-stone-500">{{ photoCount }} / {{ maxPhotos }} added · JPG or PNG</span>
             <input type="file" accept="image/*" multiple class="hidden" @change="onFiles">
           </label>
-          <div v-if="previews.length" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            <div v-for="(p, i) in previews" :key="p" class="relative aspect-square overflow-hidden rounded-xl">
+          <div v-if="photoCount" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <div v-for="(p, i) in existingPhotos" :key="p" class="relative aspect-square overflow-hidden rounded-xl">
               <img :src="p" alt="" class="size-full object-cover">
               <span v-if="i === 0" class="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white">Cover</span>
+              <UButton size="xs" color="neutral" icon="i-lucide-x" class="absolute right-1 top-1" aria-label="Remove photo" @click="removeExisting(i)" />
+            </div>
+            <div v-for="(p, i) in previews" :key="p" class="relative aspect-square overflow-hidden rounded-xl">
+              <img :src="p" alt="" class="size-full object-cover">
+              <span v-if="i === 0 && !existingPhotos.length" class="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white">Cover</span>
+              <span v-else-if="editing" class="absolute left-1 top-1 rounded bg-orange-600 px-1.5 text-[10px] text-white">New</span>
               <UButton size="xs" color="neutral" icon="i-lucide-x" class="absolute right-1 top-1" aria-label="Remove photo" @click="removePhoto(i)" />
             </div>
           </div>
@@ -507,7 +588,7 @@ async function submit() {
           <div class="rounded-xl bg-stone-50 p-4 text-sm dark:bg-stone-950">
             <p class="mb-2 font-semibold">Summary</p>
             <p>{{ form.title || 'Untitled' }}</p>
-            <p class="text-stone-500">{{ form.locality }}, {{ form.city }} · {{ form.rent ? formatRent(form.rent) + '/month' : 'No rent set' }} · {{ files.length }} photos</p>
+            <p class="text-stone-500">{{ form.locality }}, {{ form.city }} · {{ form.rent ? formatRent(form.rent) + '/month' : 'No rent set' }} · {{ photoCount }} photos</p>
           </div>
           <p class="text-xs text-stone-500">
             By posting you confirm you own this property or are allowed to rent it out, and you agree to the
@@ -520,7 +601,7 @@ async function submit() {
           <UButton v-if="step > 0" color="neutral" variant="outline" icon="i-lucide-arrow-left" @click="step--">Back</UButton>
           <span v-else />
           <UButton v-if="step < steps.length - 1" trailing-icon="i-lucide-arrow-right" @click="next">Next</UButton>
-          <UButton v-else icon="i-lucide-send" :loading="saving" @click="submit">Post property</UButton>
+          <UButton v-else :icon="editing ? 'i-lucide-save' : 'i-lucide-send'" :loading="saving" @click="submit">{{ editing ? 'Save changes' : 'Post property' }}</UButton>
         </div>
       </div>
     </template>

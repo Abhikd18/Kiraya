@@ -12,7 +12,8 @@ Stack: Nuxt 4 · Nuxt UI 4 · Tailwind 4 · Supabase (database, login, photo sto
 
 - **Live site:** https://kiraya-one.vercel.app
 - **Code:** https://github.com/Abhikd18/Kiraya (every push to `main` redeploys on Vercel)
-- **Super admin dashboard:** `/admin` (see section 6)
+- **Owner and broker dashboard:** `/dashboard` (see section 6)
+- **Super admin dashboard:** `/admin` (see section 7)
 
 ---
 
@@ -81,7 +82,16 @@ The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings �
 - **Now (free):** Kiraya is a PWA. On Android Chrome, users get an "Install app" prompt. On iPhone Safari: Share → Add to Home Screen.
 - **Play Store later:** paste your live URL into https://www.pwabuilder.com to generate an Android package (Trusted Web Activity) and upload it with a Google Play developer account. Or wrap the site with Capacitor if you need native features such as push notifications.
 
-## 6. Super admin dashboard (`/admin`)
+## 6. Owner and broker dashboard (`/dashboard`)
+
+Owners and brokers use the same account type; when posting, they choose **Owner** or **Broker / agent**, and broker listings show a "Broker" label. In **My listings** each listing has:
+
+- **Edit:** opens the same 6-step form filled in with the listing. Change anything (type, location and map pin, details, rent, photos, phone), jump between steps at the top, then tap **Save changes** on the last step. The "House no. / full address" box starts empty because it's stored privately; leave it empty to keep the saved address. Editing doesn't change the status or the 30-day expiry.
+- **Mark as rented**, **Pause**, **Make live (30 days)** and **Delete**.
+
+An **Edit listing** button also appears on the property page for its owner (and for admins).
+
+## 7. Super admin dashboard (`/admin`)
 
 Super admins manage everything from one page. Everyone else is refused by the database itself, not just hidden in the app.
 
@@ -99,7 +109,7 @@ Admins see an **Admin** link in the header and an **Admin panel** button on thei
 | Tab | What you can do |
 |---|---|
 | **Overview** | Counts of live, paused, rented and expired listings, users, open reports and unverified listings. Tap a count to open that list. |
-| **Listings** | Every listing in any status, with search and filters. **Publish** (live for 30 days), **Pause** (hidden from search), **Mark rented**, **Verify / Remove verified** (the green badge), **Delete**. |
+| **Listings** | Every listing in any status, with search and filters. **Edit** any listing, **Publish** (live for 30 days), **Pause** (hidden from search), **Mark rented**, **Verify / Remove verified** (the green badge), **Delete**. |
 | **Users** | Every account (tenants, students and owners all use the same kind of account). **Block** stops the user from posting and pauses their live listings; **Unblock** lets them post again. **Listings** shows that user's listings. |
 | **Reports** | Reports sent with "Report this listing". **Pause listing**, **Resolved**, **Dismiss**. |
 

@@ -278,6 +278,7 @@ const date = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '
                 <button type="button" class="underline hover:text-orange-600" @click="showListings('all', l.ownerId)">{{ l.ownerName }} ({{ ownerName(l.ownerId) }})</button>
               </p>
               <div class="mt-3 flex flex-wrap gap-2">
+                <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-pencil" :to="`/post?edit=${l.id}`">Edit</UButton>
                 <UButton v-if="shownStatus(l) !== 'live'" size="xs" icon="i-lucide-eye" :loading="busy === l.id" @click="publish(l)">Publish</UButton>
                 <UButton v-else size="xs" color="neutral" variant="soft" icon="i-lucide-pause" :loading="busy === l.id" @click="pause(l)">Pause</UButton>
                 <UButton v-if="shownStatus(l) === 'live'" size="xs" color="info" variant="soft" icon="i-lucide-check" @click="markRented(l)">Mark rented</UButton>

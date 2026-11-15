@@ -4,7 +4,7 @@ import type { Listing } from '#shared/types/listing'
 const route = useRoute()
 const id = String(route.params.id)
 const { getById, getOwnerPhone, toggleSave, savedIds, report, isDemo } = useListings()
-const { user } = useAuth()
+const { user, isAdmin } = useAuth()
 const toast = useToast()
 
 const { data: listing, status, refresh } = await useAsyncData<Listing | null>(`listing-${id}`, () => getById(id), {
@@ -98,9 +98,22 @@ async function share() {
 
 <template>
   <div class="mx-auto max-w-6xl px-4 py-6">
-    <UButton to="/rent" color="neutral" variant="link" icon="i-lucide-arrow-left" class="mb-3 px-0">
-      Back to search
-    </UButton>
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <UButton to="/rent" color="neutral" variant="link" icon="i-lucide-arrow-left" class="px-0">
+        Back to search
+      </UButton>
+      <!-- Only the owner or an admin sees this (user is known only after the page loads in the browser) -->
+      <UButton
+        v-if="listing && user && (listing.ownerId === user.id || isAdmin)"
+        :to="`/post?edit=${listing.id}`"
+        size="sm"
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-pencil"
+      >
+        Edit listing
+      </UButton>
+    </div>
 
     <div v-if="status === 'pending' && !listing" class="space-y-4">
       <div class="aspect-[16/9] animate-pulse rounded-2xl bg-stone-200 dark:bg-stone-800" />

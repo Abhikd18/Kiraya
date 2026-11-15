@@ -198,11 +198,11 @@ export function useListings() {
     return (data ?? []).map(fromRow)
   }
 
-  async function getById(id: string): Promise<Listing | null> {
+  async function getById(id: string, { countView = true } = {}): Promise<Listing | null> {
     if (!supabase) return allDemoListings().find(l => l.id === id) ?? null
     const { data, error } = await supabase.from('listings').select(COLUMNS).eq('id', id).maybeSingle()
     if (error) throw error
-    if (data) supabase.rpc('increment_listing_views', { listing_id: id }).then(() => {}, () => {})
+    if (data && countView) supabase.rpc('increment_listing_views', { listing_id: id }).then(() => {}, () => {})
     return data ? fromRow(data) : null
   }
 
@@ -261,6 +261,35 @@ export function useListings() {
     const { error: contactError } = await supabase.from('listing_contacts').insert({ listing_id: data.id, phone: input.ownerPhone })
     if (contactError) throw contactError
     return data.id as string
+  }
+
+  /**
+   * Saves changes to an existing listing (its owner, or an admin).
+   * keepPhotos = photos already on the listing that should stay; files = new photos to add.
+   * An empty address keeps the address saved before (it can't be read back, see schema.sql).
+   * Status, verified badge, views and dates are not changed here.
+   */
+  async function update(id: string, input: NewListing, keepPhotos: string[], files: File[]) {
+    if (!user.value) throw new Error('Please log in to edit a property.')
+
+    if (!supabase) {
+      const list = readLocal<Listing[]>(LOCAL_KEY, [])
+      const old = list.find(l => l.id === id)
+      if (!old) throw new Error('Sample listings can\'t be edited. Post your own listing to try editing.')
+      const added = await uploadPhotos(files.slice(0, Math.max(0, 4 - keepPhotos.length)), user.value.id)
+      const updated: Listing = { ...old, ...input, address: input.address || old.address, photos: [...keepPhotos, ...added] }
+      writeLocal(LOCAL_KEY, list.map(l => (l.id === id ? updated : l)))
+      return
+    }
+
+    const added = await uploadPhotos(files, user.value.id)
+    const row: Record<string, unknown> = toRow({ ...input, photos: [...keepPhotos, ...added] })
+    if (!input.address) delete row.address
+    const { data, error } = await supabase.from('listings').update(row).eq('id', id).select('id')
+    if (error) throw error
+    if (!data?.length) throw new Error('You can only edit your own listings.')
+    const { error: contactError } = await supabase.from('listing_contacts').upsert({ listing_id: id, phone: input.ownerPhone })
+    if (contactError) throw contactError
   }
 
   async function mine(): Promise<Listing[]> {
@@ -323,5 +352,5 @@ export function useListings() {
     if (error) throw error
   }
 
-  return { isDemo, search, getById, getOwnerPhone, create, mine, setStatus, remove, savedIds, loadSaved, toggleSave, savedListings, report }
+  return { isDemo, search, getById, getOwnerPhone, create, update, mine, setStatus, remove, savedIds, loadSaved, toggleSave, savedListings, report }
 }
