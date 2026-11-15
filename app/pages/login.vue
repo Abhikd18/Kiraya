@@ -14,7 +14,23 @@ const name = ref('')
 const codeSent = ref(false)
 const loading = ref(false)
 
+// Show "Continue with Google" only once Google is switched on in Supabase
+// (otherwise the button leads to a raw "provider is not enabled" error page)
+const googleEnabled = ref(false)
+const config = useRuntimeConfig()
+async function checkGoogle() {
+  try {
+    const s = await $fetch<{ external?: { google?: boolean } }>(`${config.public.supabaseUrl}/auth/v1/settings`, {
+      headers: { apikey: config.public.supabaseAnonKey as string }
+    })
+    googleEnabled.value = s.external?.google === true
+  } catch {
+    googleEnabled.value = false
+  }
+}
+
 onMounted(async () => {
+  if (hasBackend) checkGoogle()
   await init()
   if (user.value) navigateTo(nextPath.value)
 })
@@ -49,7 +65,7 @@ async function sendCode() {
     toast.add({
       title: 'Could not send the login email',
       description: /rate limit/i.test(msg)
-        ? 'Too many login emails were sent in the last hour. Please wait a while and try again, or continue with Google.'
+        ? `Too many login emails were sent in the last hour. Please wait a while and try again${googleEnabled.value ? ', or continue with Google' : ''}.`
         : msg,
       color: 'error'
     })
@@ -90,11 +106,13 @@ function demoLogin() {
           <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0" />
           {{ authError }}
         </p>
-        <UButton block size="lg" color="neutral" variant="outline" icon="i-simple-icons-google" :loading="loading" @click="google">
-          Continue with Google
-        </UButton>
+        <template v-if="googleEnabled">
+          <UButton block size="lg" color="neutral" variant="outline" icon="i-simple-icons-google" :loading="loading" @click="google">
+            Continue with Google
+          </UButton>
+        </template>
 
-        <div class="my-5 flex items-center gap-3 text-xs text-stone-400">
+        <div v-if="googleEnabled" class="my-5 flex items-center gap-3 text-xs text-stone-400">
           <span class="h-px flex-1 bg-stone-200 dark:bg-stone-700" /> or use email <span class="h-px flex-1 bg-stone-200 dark:bg-stone-700" />
         </div>
 
