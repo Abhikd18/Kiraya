@@ -6,6 +6,7 @@ const nextPath = computed(() => (typeof route.query.next === 'string' && route.q
 const hasBackend = useHasBackend()
 const { user, init, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn } = useAuth()
 const toast = useToast()
+const authError = useState<string>('kiraya-auth-error', () => '')
 
 const email = ref('')
 const code = ref('')
@@ -41,9 +42,17 @@ async function sendCode() {
   try {
     await sendEmailCode(email.value.trim(), nextPath.value)
     codeSent.value = true
-    toast.add({ title: 'Code sent', description: `Check ${email.value} for your 6-digit code.`, color: 'success' })
+    authError.value = ''
+    toast.add({ title: 'Email sent', description: `Open the email we sent to ${email.value} and tap "Sign in".`, color: 'success' })
   } catch (e) {
-    toast.add({ title: 'Could not send code', description: (e as Error).message, color: 'error' })
+    const msg = (e as Error).message
+    toast.add({
+      title: 'Could not send the login email',
+      description: /rate limit/i.test(msg)
+        ? 'Too many login emails were sent in the last hour. Please wait a while and try again, or continue with Google.'
+        : msg,
+      color: 'error'
+    })
   } finally {
     loading.value = false
   }
@@ -77,6 +86,10 @@ function demoLogin() {
       </div>
 
       <template v-if="hasBackend">
+        <p v-if="authError" class="mb-4 flex gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+          <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0" />
+          {{ authError }}
+        </p>
         <UButton block size="lg" color="neutral" variant="outline" icon="i-simple-icons-google" :loading="loading" @click="google">
           Continue with Google
         </UButton>
@@ -89,10 +102,14 @@ function demoLogin() {
           <UFormField label="Email">
             <UInput v-model="email" type="email" placeholder="you@example.com" size="lg" class="w-full" autocomplete="email" />
           </UFormField>
-          <UButton type="submit" block size="lg" :loading="loading">Send me a login code</UButton>
+          <UButton type="submit" block size="lg" :loading="loading">Email me a login link</UButton>
         </form>
 
         <form v-else class="space-y-3" @submit.prevent="verify">
+          <p class="rounded-lg bg-stone-50 p-3 text-sm text-stone-600 dark:bg-stone-950 dark:text-stone-300">
+            We emailed a sign-in link to <strong>{{ email }}</strong>. Open it on this device to log in.
+            If the email shows a code instead, enter it below.
+          </p>
           <UFormField :label="`Code sent to ${email}`">
             <UInput v-model="code" inputmode="numeric" placeholder="6-digit code" size="lg" class="w-full" :maxlength="8" autocomplete="one-time-code" />
           </UFormField>

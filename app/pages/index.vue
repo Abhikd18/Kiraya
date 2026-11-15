@@ -7,7 +7,7 @@ useSeoMeta({
 })
 
 const { search, isDemo } = useListings()
-const { data: latest, refresh } = await useAsyncData<Listing[]>('home-latest', () => search({ sort: 'newest' }).then(l => l.slice(0, 8)), {
+const { data: latest, status, refresh } = await useAsyncData<Listing[]>('home-latest', () => search({ sort: 'newest' }).then(l => l.slice(0, 8)), {
   default: () => []
 })
 // Demo mode: also show listings posted in this browser (localStorage isn't available on the server)
@@ -74,8 +74,14 @@ const cityCards = [
       <div v-if="latest.length" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <ListingCard v-for="l in latest" :key="l.id" :listing="l" />
       </div>
-      <div v-else class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div v-else-if="status === 'pending'" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div v-for="i in 4" :key="i" class="aspect-[4/5] animate-pulse rounded-2xl bg-stone-200 dark:bg-stone-800" />
+      </div>
+      <div v-else class="rounded-2xl border border-dashed border-stone-300 p-10 text-center dark:border-stone-700">
+        <UIcon name="i-lucide-house-plus" class="mx-auto mb-3 size-10 text-orange-600" />
+        <p class="font-semibold">No listings yet</p>
+        <p class="mb-4 text-sm text-stone-500">Be the first to post a flat, PG or room in Tricity. It's free.</p>
+        <UButton to="/post" icon="i-lucide-plus">Post property free</UButton>
       </div>
     </section>
 

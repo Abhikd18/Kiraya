@@ -10,6 +10,10 @@ One Nuxt 4 codebase gives you:
 
 Stack: Nuxt 4 · Nuxt UI 4 · Tailwind 4 · Supabase (database, login, photo storage) · Leaflet + OpenStreetMap maps · Vercel hosting. Everything starts on free plans.
 
+- **Live site:** https://kiraya-one.vercel.app
+- **Code:** https://github.com/Abhikd18/Kiraya (every push to `main` redeploys on Vercel)
+- **Super admin dashboard:** `/admin` (see section 6)
+
 ---
 
 ## 1. Run it on your computer
@@ -26,41 +30,49 @@ Without Supabase keys, Kiraya runs in **demo mode**: 12 sample Tricity listings,
 ## 2. Connect Supabase (real database and login), about 5 minutes
 
 1. Create a free project at https://supabase.com (choose the **Mumbai** region).
-2. Go to **SQL Editor → New query**, paste everything from `supabase/schema.sql` and click **Run**.
-3. Go to **Project Settings → API** and copy the **Project URL** and the **anon public** key.
+2. Go to **SQL Editor → New query**, paste everything from `supabase/schema.sql` and click **Run**. The file is safe to run again whenever it changes; it never deletes your data.
+3. Go to **Project Settings → API Keys** and copy the **Project URL** and the **Publishable key** (`sb_publishable_…`, or the legacy **anon public** key `eyJ…`). Never use the secret / `service_role` key in the app.
 4. Copy `.env.example` to `.env` and fill them in:
    ```
    NUXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-   NUXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+   NUXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
    NUXT_PUBLIC_SITE_URL=http://localhost:3000
    ```
-5. **Email login code:** go to **Authentication → Emails → Magic Link** and add `{{ .Token }}` to the email body so users get a 6-digit code (the link in the email also works).
-6. **Google login (optional):** go to **Authentication → Sign In / Providers → Google**, turn it on and paste a Client ID and Secret from Google Cloud Console (OAuth client, type "Web application"). Add the redirect URL that Supabase shows you to the Google OAuth client.
-7. **Authentication → URL Configuration:** set the Site URL to your live Vercel address, and add `http://localhost:3000/**` and `https://YOUR-SITE.vercel.app/**` to Redirect URLs.
-8. Restart `pnpm dev`. The yellow demo banner disappears.
+5. **Authentication → URL Configuration:** set the Site URL to your live Vercel address, and add `http://localhost:3000/**` and `https://YOUR-SITE.vercel.app/**` to Redirect URLs.
+6. Restart `pnpm dev`. The yellow demo banner disappears.
+
+### Email login
+
+Users type their email and get a **"Sign in" link**. The link works once, in any browser or phone, and each new email cancels the older ones. If a link is expired or already used, the app shows a clear message and asks for a new one.
+
+- **Free email limit:** Supabase's built-in email sends only about **2 login emails per hour** for the whole project. That's fine for testing, but not for real users.
+- **Before launch, connect your own email service** (free plans exist: Resend, Brevo, or Gmail SMTP with an app password) in **Authentication → Emails → SMTP Settings**. This removes the 2-per-hour limit and unlocks the email templates. You can then add `{{ .Token }}` to the **Magic Link** template so the email also shows a 6-digit code, which the login page already accepts.
+
+### Google login (optional, recommended)
+
+Go to **Authentication → Sign In / Providers → Google**, turn it on and paste a Client ID and Secret from Google Cloud Console (OAuth client, type "Web application"). Add the redirect URL that Supabase shows you to the Google OAuth client. Google login has no email limits.
 
 **Free plan notes:** Supabase pauses a free project after about a week with no database activity (open the dashboard to wake it). Free storage is 1 GB, so photos are compressed in the browser before upload.
 
-**Your admin work:** reports from "Report this listing" are in the `reports` table. To give a listing the **Verified** badge, set `verified = true` for that row in **Table Editor → listings**.
+**Privacy built into the database:** the "House no. / full address" field is never readable from the app, and owner phone numbers are only shown to logged-in users.
 
-## 3. Put it on GitHub
+## 3. GitHub
+
+The code is at https://github.com/Abhikd18/Kiraya. To publish changes:
 
 ```bash
-git init
 git add .
-git commit -m "Kiraya: first version"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/kiraya.git
-git push -u origin main
+git commit -m "Describe the change"
+git push
 ```
 
-Create an empty repository named `kiraya` on GitHub first (no README, no .gitignore).
+`.env` is in `.gitignore` and is never committed.
 
-## 4. Deploy on Vercel
+## 4. Vercel
 
-1. https://vercel.com/new → **Import** the `kiraya` repository. Vercel detects Nuxt automatically.
-2. Under **Environment Variables**, add the three `NUXT_PUBLIC_…` values. Set `NUXT_PUBLIC_SITE_URL` to your Vercel address.
-3. Click **Deploy**. Every `git push` to `main` deploys again automatically.
+The project `kiraya` on the `abhikd18` Hobby account is connected to the GitHub repo, so every `git push` to `main` deploys https://kiraya-one.vercel.app automatically (about 1 minute).
+
+The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings → Environment Variables** (`NUXT_PUBLIC_SITE_URL` = `https://kiraya-one.vercel.app`). If you change one there, redeploy (**Deployments → ⋯ → Redeploy**) for it to take effect.
 
 **Important:** Vercel's free Hobby plan is for personal, non-commercial use. It's fine while you build and test. Move to Vercel Pro (or another host) before you start charging for anything.
 
@@ -69,18 +81,42 @@ Create an empty repository named `kiraya` on GitHub first (no README, no .gitign
 - **Now (free):** Kiraya is a PWA. On Android Chrome, users get an "Install app" prompt. On iPhone Safari: Share → Add to Home Screen.
 - **Play Store later:** paste your live URL into https://www.pwabuilder.com to generate an Android package (Trusted Web Activity) and upload it with a Google Play developer account. Or wrap the site with Capacitor if you need native features such as push notifications.
 
+## 6. Super admin dashboard (`/admin`)
+
+Super admins manage everything from one page. Everyone else is refused by the database itself, not just hidden in the app.
+
+**Make someone a super admin** (they must have logged in once). In Supabase **SQL Editor**, run:
+
+```sql
+insert into public.admins (user_id)
+select id from auth.users where email = 'their@email.com';
+```
+
+To remove an admin: `delete from public.admins where user_id = (select id from auth.users where email = 'their@email.com');`
+
+Admins see an **Admin** link in the header and an **Admin panel** button on their dashboard.
+
+| Tab | What you can do |
+|---|---|
+| **Overview** | Counts of live, paused, rented and expired listings, users, open reports and unverified listings. Tap a count to open that list. |
+| **Listings** | Every listing in any status, with search and filters. **Publish** (live for 30 days), **Pause** (hidden from search), **Mark rented**, **Verify / Remove verified** (the green badge), **Delete**. |
+| **Users** | Every account (tenants, students and owners all use the same kind of account). **Block** stops the user from posting and pauses their live listings; **Unblock** lets them post again. **Listings** shows that user's listings. |
+| **Reports** | Reports sent with "Report this listing". **Pause listing**, **Resolved**, **Dismiss**. |
+
+Deleting an account completely is done in Supabase: **Authentication → Users** (this also deletes their listings).
+
 ## Project structure
 
 ```
 app/
   pages/            index (home), rent (search), property/[id], post (6-step form),
-                    login, dashboard (my listings), saved, terms, privacy
+                    login, dashboard (my listings), admin (super admin), saved, terms, privacy
   components/       header, mobile tab bar, listing card, filters, map, etc.
-  composables/      useSupabase, useAuth, useListings (Supabase or demo mode), useLeaflet
+  composables/      useSupabase, useAuth, useListings (Supabase or demo mode), useAdmin, useLeaflet
   data/             demo listings
   utils/labels.ts   cities, property types, amenities, formatting helpers
 shared/types/       Listing types used everywhere
-supabase/schema.sql database tables, security rules and photo storage
+supabase/schema.sql database tables, security rules, admins and photo storage
 public/             PWA manifest, service worker, app icons
 ```
 

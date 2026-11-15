@@ -49,7 +49,8 @@ export default defineNuxtConfig({
     '/post': { ssr: false },
     '/dashboard': { ssr: false },
     '/login': { ssr: false },
-    '/saved': { ssr: false }
+    '/saved': { ssr: false },
+    '/admin': { ssr: false }
   },
 
   vite: {

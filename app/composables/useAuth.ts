@@ -11,16 +11,30 @@ const DEMO_USER_KEY = 'kiraya-demo-user'
 export function useAuth() {
   const user = useState<KirayaUser | null>('kiraya-user', () => null)
   const ready = useState<boolean>('kiraya-auth-ready', () => false)
+  const isAdmin = useState<boolean>('kiraya-is-admin', () => false)
   const supabase = useSupabase()
   const config = useRuntimeConfig()
+
+  /** Super admins are listed in the "admins" table (see supabase/schema.sql). */
+  async function checkAdmin() {
+    if (!supabase || !user.value) {
+      isAdmin.value = false
+      return
+    }
+    const { data } = await supabase.rpc('is_admin')
+    isAdmin.value = data === true
+  }
 
   async function init() {
     if (import.meta.server || ready.value) return
     if (supabase) {
       const { data } = await supabase.auth.getSession()
       user.value = mapUser(data.session?.user)
+      await checkAdmin()
       supabase.auth.onAuthStateChange((_event, session) => {
         user.value = mapUser(session?.user)
+        // Run outside the callback: awaiting Supabase calls inside it can deadlock
+        setTimeout(checkAdmin, 0)
       })
     } else {
       try {
@@ -73,6 +87,7 @@ export function useAuth() {
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
     if (error) throw error
     user.value = mapUser(data.user)
+    await checkAdmin()
   }
 
   function demoSignIn(name: string, email: string) {
@@ -85,7 +100,8 @@ export function useAuth() {
     if (supabase) await supabase.auth.signOut()
     else localStorage.removeItem(DEMO_USER_KEY)
     user.value = null
+    isAdmin.value = false
   }
 
-  return { user, ready, init, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
+  return { user, ready, isAdmin, init, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
 }

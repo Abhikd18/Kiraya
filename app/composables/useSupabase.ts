@@ -20,8 +20,10 @@ export function useSupabase(): SupabaseClient | null {
     return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
   }
   if (!client) {
+    // 'implicit' so the email sign-in link works in any browser or phone, not only the one that asked for it
+    // (the free Supabase email can't include a 6-digit code, so the link is the main way to log in)
     client = createClient(url, key, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
     })
   }
   return client

@@ -3,7 +3,7 @@ import type { Listing, ListingStatus } from '#shared/types/listing'
 
 useSeoMeta({ title: 'My listings | Kiraya' })
 
-const { user, ready, init, signOut } = useAuth()
+const { user, ready, isAdmin, init, signOut } = useAuth()
 const { mine, setStatus, remove } = useListings()
 const toast = useToast()
 
@@ -85,6 +85,7 @@ const stats = computed(() => ({
           <p class="text-stone-500">{{ user.email || 'Manage your properties here' }}</p>
         </div>
         <div class="flex gap-2">
+          <UButton v-if="isAdmin" to="/admin" color="neutral" variant="outline" icon="i-lucide-shield-check">Admin panel</UButton>
           <UButton to="/post" icon="i-lucide-plus">Post property</UButton>
           <UButton color="neutral" variant="outline" icon="i-lucide-log-out" @click="logout">Log out</UButton>
         </div>

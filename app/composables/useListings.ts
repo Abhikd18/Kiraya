@@ -5,10 +5,12 @@ const LOCAL_KEY = 'kiraya-local-listings'
 const SAVED_KEY = 'kiraya-saved'
 const REPORTS_KEY = 'kiraya-reports'
 const DAY = 86400000
+// Every column except the private "address" (see supabase/schema.sql), so select('*') is not used
+export const COLUMNS = 'id,owner_id,owner_name,posted_by,type,title,description,city,locality,landmark,lat,lng,bhk,bathrooms,area_sqft,floor,total_floors,furnishing,furnishing_items,amenities,tenant_preference,veg_only,pets_allowed,rent,deposit,maintenance,electricity,negotiable,available_from,photos,pg,house_rules,verified,status,views,created_at,expires_at'
 
 // ---------- mapping between the database (snake_case) and the app (camelCase) ----------
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function fromRow(r: any): Listing {
+export function fromRow(r: any): Listing {
   return {
     id: r.id,
     ownerId: r.owner_id,
@@ -171,7 +173,7 @@ export function useListings() {
   async function search(filters: ListingFilters): Promise<Listing[]> {
     if (!supabase) return applyFilters(allDemoListings(), filters)
 
-    let query = supabase.from('listings').select('*').eq('status', 'live').gt('expires_at', new Date().toISOString())
+    let query = supabase.from('listings').select(COLUMNS).eq('status', 'live').gt('expires_at', new Date().toISOString())
     if (filters.city) query = query.eq('city', filters.city)
     if (filters.type) query = query.eq('type', filters.type)
     if (filters.bhk) query = filters.bhk >= 4 ? query.gte('bhk', 4) : query.eq('bhk', filters.bhk)
@@ -198,7 +200,7 @@ export function useListings() {
 
   async function getById(id: string): Promise<Listing | null> {
     if (!supabase) return allDemoListings().find(l => l.id === id) ?? null
-    const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle()
+    const { data, error } = await supabase.from('listings').select(COLUMNS).eq('id', id).maybeSingle()
     if (error) throw error
     if (data) supabase.rpc('increment_listing_views', { listing_id: id }).then(() => {}, () => {})
     return data ? fromRow(data) : null
@@ -253,6 +255,8 @@ export function useListings() {
 
     const photos = await uploadPhotos(files, folder)
     const { data, error } = await supabase.from('listings').insert({ ...toRow({ ...input, photos }) }).select('id').single()
+    // 42501 = blocked by a security rule; for a logged-in user that means an admin blocked the account
+    if (error?.code === '42501') throw new Error('Your account is not allowed to post listings. Contact Kiraya support.')
     if (error) throw error
     const { error: contactError } = await supabase.from('listing_contacts').insert({ listing_id: data.id, phone: input.ownerPhone })
     if (contactError) throw contactError
@@ -262,7 +266,7 @@ export function useListings() {
   async function mine(): Promise<Listing[]> {
     if (!user.value) return []
     if (!supabase) return readLocal<Listing[]>(LOCAL_KEY, []).filter(l => l.ownerId === user.value!.id)
-    const { data, error } = await supabase.from('listings').select('*').eq('owner_id', user.value.id).order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('listings').select(COLUMNS).eq('owner_id', user.value.id).order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []).map(fromRow)
   }
@@ -305,7 +309,7 @@ export function useListings() {
     const ids = savedIds.value
     if (!ids.length) return []
     if (!supabase) return allDemoListings().filter(l => ids.includes(l.id))
-    const { data, error } = await supabase.from('listings').select('*').in('id', ids)
+    const { data, error } = await supabase.from('listings').select(COLUMNS).in('id', ids)
     if (error) throw error
     return (data ?? []).map(fromRow)
   }

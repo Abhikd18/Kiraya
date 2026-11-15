@@ -1,12 +1,13 @@
 <script setup lang="ts">
-const { user, signOut } = useAuth()
+const { user, isAdmin, signOut } = useAuth()
 const route = useRoute()
 
-const links = [
+const links = computed(() => [
   { label: 'Find a home', to: '/rent' },
   { label: 'Saved', to: '/saved' },
-  { label: 'My listings', to: '/dashboard' }
-]
+  { label: 'My listings', to: '/dashboard' },
+  ...(isAdmin.value ? [{ label: 'Admin', to: '/admin' }] : [])
+])
 
 async function logout() {
   await signOut()
