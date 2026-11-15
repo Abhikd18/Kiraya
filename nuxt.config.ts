@@ -42,8 +42,9 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/': { isr: 300 },
-    '/terms': { prerender: true },
-    '/privacy': { prerender: true },
+    // Cached until the next deploy. (Prerendering these left out their _payload.json on Vercel → 404s in the console.)
+    '/terms': { isr: true },
+    '/privacy': { isr: true },
     // Pages that depend on the logged-in user or browser storage render in the browser only
     '/post': { ssr: false },
     '/dashboard': { ssr: false },
