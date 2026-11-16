@@ -9,6 +9,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Light mode: one shade darker than Nuxt UI's defaults so button text stays readable,
+   including on hover. Orange-600 is also Kiraya's brand colour (#ea580c). Dark mode keeps the defaults. */
+:root:not(.dark) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-success: var(--ui-color-success-700);
+  --ui-info: var(--ui-color-info-700);
+  --ui-error: var(--ui-color-error-600);
+  --ui-warning: var(--ui-color-warning-700);
+}
+
 /* Leave room for the phone bottom bar and the iPhone home indicator */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);

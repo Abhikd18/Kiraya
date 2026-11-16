@@ -252,7 +252,7 @@ const tabs = computed(() => [
             :key="t.value"
             type="button"
             class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition"
-            :class="tab === t.value ? 'bg-white text-orange-700 shadow-sm dark:bg-stone-900 dark:text-orange-300' : 'text-stone-600 hover:bg-white/60 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-900/60'"
+            :class="tab === t.value ? 'bg-white text-orange-700 shadow-sm dark:bg-stone-900 dark:text-orange-300' : 'text-stone-600 hover:bg-white/60 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-white'"
             @click="tab = t.value"
           >
             <UIcon :name="t.icon" class="size-4" />
