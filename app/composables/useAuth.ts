@@ -106,6 +106,9 @@ export function useAuth() {
     }
     if (supabase) {
       const { data, error } = await supabase.from('profiles').update(clean).eq('id', user.value.id).select('id')
+      if (error && (error.code === '42703' || error.code === 'PGRST204' || /schema cache/i.test(error.message))) {
+        throw new Error('Kiraya was just updated and its database needs the matching update. Please try again later. (Admin: run supabase/schema.sql in Supabase → SQL Editor.)')
+      }
       if (error) throw error
       if (!data?.length) throw new Error('Your profile could not be saved. Please log out and in again.')
       // Keep the login details in step so the name shows everywhere straight away

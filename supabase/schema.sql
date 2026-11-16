@@ -284,3 +284,7 @@ create policy "Users delete their own photos" on storage.objects
   for delete to authenticated using (
     bucket_id = 'listing-photos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
+
+-- 5. Refresh the API ---------------------------------------------------------
+-- Tell Supabase's API about new tables/columns right away (avoids "not found in the schema cache" errors)
+notify pgrst, 'reload schema';
