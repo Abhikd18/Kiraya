@@ -1,9 +1,20 @@
+export type UserRole = 'tenant' | 'student' | 'owner' | 'broker'
+
 export interface KirayaUser {
   id: string
   email?: string
   name: string
   phone?: string
+  role?: UserRole
+  city?: string
   demo?: boolean
+}
+
+export interface ProfileInput {
+  name: string
+  phone: string
+  role: UserRole | ''
+  city: string
 }
 
 const DEMO_USER_KEY = 'kiraya-demo-user'
@@ -25,16 +36,37 @@ export function useAuth() {
     isAdmin.value = data === true
   }
 
+  /** Name, phone, role and city the user saved on "My profile" (profiles table). */
+  async function loadProfile() {
+    if (!supabase || !user.value) return
+    const { data } = await supabase.from('profiles').select('name,phone,role,city').eq('id', user.value.id).maybeSingle()
+    if (data && user.value) {
+      user.value = {
+        ...user.value,
+        name: data.name || user.value.name,
+        phone: data.phone || user.value.phone,
+        role: data.role || undefined,
+        city: data.city || undefined
+      }
+    }
+  }
+
+  async function afterLogin() {
+    await Promise.all([checkAdmin(), loadProfile()])
+  }
+
   async function init() {
     if (import.meta.server || ready.value) return
     if (supabase) {
       const { data } = await supabase.auth.getSession()
       user.value = mapUser(data.session?.user)
-      await checkAdmin()
+      await afterLogin()
       supabase.auth.onAuthStateChange((_event, session) => {
-        user.value = mapUser(session?.user)
+        const next = mapUser(session?.user)
+        // Same person (e.g. token refresh): keep the profile details already loaded
+        user.value = next && user.value?.id === next.id ? { ...next, ...pickProfile(user.value) } : next
         // Run outside the callback: awaiting Supabase calls inside it can deadlock
-        setTimeout(checkAdmin, 0)
+        setTimeout(afterLogin, 0)
       })
     } else {
       try {
@@ -47,6 +79,10 @@ export function useAuth() {
     ready.value = true
   }
 
+  function pickProfile(u: KirayaUser) {
+    return { name: u.name, phone: u.phone, role: u.role, city: u.city }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function mapUser(u: any): KirayaUser | null {
     if (!u) return null
@@ -57,6 +93,26 @@ export function useAuth() {
       phone: meta.phone,
       name: meta.full_name || meta.name || (u.email ? u.email.split('@')[0] : 'Kiraya user')
     }
+  }
+
+  /** Saves "My profile". Works in Supabase mode and in demo mode. */
+  async function updateProfile(p: ProfileInput) {
+    if (!user.value) throw new Error('Please log in first.')
+    const clean = {
+      name: p.name.trim(),
+      phone: p.phone.replace(/\D/g, '').slice(-10),
+      role: p.role || null,
+      city: p.city || null
+    }
+    if (supabase) {
+      const { data, error } = await supabase.from('profiles').update(clean).eq('id', user.value.id).select('id')
+      if (error) throw error
+      if (!data?.length) throw new Error('Your profile could not be saved. Please log out and in again.')
+      // Keep the login details in step so the name shows everywhere straight away
+      await supabase.auth.updateUser({ data: { full_name: clean.name, phone: clean.phone } })
+    }
+    user.value = { ...user.value, name: clean.name, phone: clean.phone || undefined, role: clean.role ?? undefined, city: clean.city ?? undefined }
+    if (!supabase) localStorage.setItem(DEMO_USER_KEY, JSON.stringify(user.value))
   }
 
   function redirectUrl(path = '/dashboard') {
@@ -87,7 +143,7 @@ export function useAuth() {
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
     if (error) throw error
     user.value = mapUser(data.user)
-    await checkAdmin()
+    await afterLogin()
   }
 
   function demoSignIn(name: string, email: string) {
@@ -103,5 +159,5 @@ export function useAuth() {
     isAdmin.value = false
   }
 
-  return { user, ready, isAdmin, init, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
+  return { user, ready, isAdmin, init, updateProfile, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
 }

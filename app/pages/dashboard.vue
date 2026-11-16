@@ -84,7 +84,8 @@ const stats = computed(() => ({
           <h1 class="text-2xl font-bold">Hi {{ user.name.split(' ')[0] }}</h1>
           <p class="text-stone-500">{{ user.email || 'Manage your properties here' }}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+          <UButton to="/profile" color="neutral" variant="outline" icon="i-lucide-circle-user-round">My profile</UButton>
           <UButton v-if="isAdmin" to="/admin" color="neutral" variant="outline" icon="i-lucide-shield-check">Admin panel</UButton>
           <UButton to="/post" icon="i-lucide-plus">Post property</UButton>
           <UButton color="neutral" variant="outline" icon="i-lucide-log-out" @click="logout">Log out</UButton>

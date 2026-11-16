@@ -7,6 +7,9 @@ export interface AdminUser {
   name: string
   blocked: boolean
   createdAt: string
+  phone: string
+  role: string
+  city: string
   listings: number
   live: number
 }
@@ -62,7 +65,7 @@ export function useAdmin() {
 
   /** All accounts with how many listings each one has. */
   async function allUsers(listings: Listing[]): Promise<AdminUser[]> {
-    const { data, error } = await db().from('profiles').select('id,email,name,blocked,created_at').order('created_at', { ascending: false }).limit(1000)
+    const { data, error } = await db().from('profiles').select('id,email,name,blocked,created_at,phone,role,city').order('created_at', { ascending: false }).limit(1000)
     if (error) throw error
     const now = Date.now()
     return (data ?? []).map((u) => {
@@ -73,6 +76,9 @@ export function useAdmin() {
         name: u.name ?? '',
         blocked: u.blocked,
         createdAt: u.created_at,
+        phone: u.phone ?? '',
+        role: u.role ?? '',
+        city: u.city ?? '',
         listings: own.length,
         live: own.filter(l => l.status === 'live' && new Date(l.expiresAt).getTime() > now).length
       }

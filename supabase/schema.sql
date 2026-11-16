@@ -49,6 +49,20 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from public.admins where user_id = auth.uid());
 $$;
 
+-- Details each user can edit on their "My profile" page
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists role text;
+alter table public.profiles add column if not exists city text;
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role is null or role in ('tenant', 'student', 'owner', 'broker'));
+alter table public.profiles drop constraint if exists profiles_phone_check;
+alter table public.profiles add constraint profiles_phone_check
+  check (phone is null or phone ~ '^[0-9+ ]{10,15}$');
+alter table public.profiles drop constraint if exists profiles_name_check;
+alter table public.profiles add constraint profiles_name_check
+  check (name is null or char_length(name) <= 80);
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Users see their own profile, admins see all" on public.profiles;
@@ -58,6 +72,26 @@ create policy "Users see their own profile, admins see all" on public.profiles
 drop policy if exists "Admins can block users" on public.profiles;
 create policy "Admins can block users" on public.profiles
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Users edit their own profile" on public.profiles;
+create policy "Users edit their own profile" on public.profiles
+  for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
+-- Users can't unblock themselves or change their login email here; only admins can change "blocked".
+create or replace function public.protect_profile_fields()
+returns trigger language plpgsql as $$
+begin
+  if current_user in ('anon', 'authenticated') and not public.is_admin() then
+    new.blocked := old.blocked;
+    new.email := old.email;
+    new.created_at := old.created_at;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists protect_profile_fields on public.profiles;
+create trigger protect_profile_fields before update on public.profiles
+for each row execute function public.protect_profile_fields();
 
 -- 1. Listings ---------------------------------------------------------------
 create table if not exists public.listings (

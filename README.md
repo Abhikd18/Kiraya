@@ -12,7 +12,7 @@ Stack: Nuxt 4 · Nuxt UI 4 · Tailwind 4 · Supabase (database, login, photo sto
 
 - **Live site:** https://kiraya-one.vercel.app
 - **Code:** https://github.com/Abhikd18/Kiraya (every push to `main` redeploys on Vercel)
-- **Owner and broker dashboard:** `/dashboard` (see section 6)
+- **My profile:** `/profile` (see section 6) · **Owner and broker dashboard:** `/dashboard` (see section 6b)
 - **Super admin dashboard:** `/admin` (see section 7)
 
 ---
@@ -47,7 +47,20 @@ Without Supabase keys, Kiraya runs in **demo mode**: 12 sample Tricity listings,
 Users type their email and get a **"Sign in" link**. The link works once, in any browser or phone, and each new email cancels the older ones. If a link is expired or already used, the app shows a clear message and asks for a new one.
 
 - **Free email limit:** Supabase's built-in email sends only about **2 login emails per hour** for the whole project. That's fine for testing, but not for real users.
-- **Before launch, connect your own email service** (free plans exist: Resend, Brevo, or Gmail SMTP with an app password) in **Authentication → Emails → SMTP Settings**. This removes the 2-per-hour limit and unlocks the email templates. You can then add `{{ .Token }}` to the **Magic Link** template so the email also shows a 6-digit code, which the login page already accepts.
+- **Before launch, connect your own email service** in **Authentication → Emails → SMTP Settings**. This removes the 2-per-hour limit and unlocks the email templates.
+
+#### Email with Resend (free: 3,000 emails/month, 100/day)
+
+Resend only sends to other people from a **domain you own** (e.g. `kiraya.in`). Without a domain it can only send to your own Resend account email.
+
+1. Sign up at https://resend.com → **Domains → Add domain** → enter your domain (region: Tokyo or Singapore is closest to India).
+2. Add the DNS records Resend shows (MX, TXT for SPF/DKIM) at your domain registrar, then click **Verify** (usually minutes, can take a few hours).
+3. **API Keys → Create API key** (permission: **Sending access**, domain: yours). Copy it once; Resend never shows it again. Never put it in the app or `.env`.
+4. Supabase → **Authentication → Emails → SMTP Settings** → turn on **Enable custom SMTP**:
+   - Sender email: `login@your-domain` · Sender name: `Kiraya`
+   - Host: `smtp.resend.com` · Port: `465` · Username: `resend` · Password: the API key
+5. **Authentication → Rate Limits:** raise **Rate limit for sending emails** (e.g. 30 per hour).
+6. **Authentication → Emails → Templates → Magic Link:** add the 6-digit code to the body, for example `<p>Your Kiraya login code: <strong>{{ .Token }}</strong></p>`. The login page already has a code box.
 
 ### Google login (optional, recommended)
 
@@ -82,7 +95,11 @@ The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings �
 - **Now (free):** Kiraya is a PWA. On Android Chrome, users get an "Install app" prompt. On iPhone Safari: Share → Add to Home Screen.
 - **Play Store later:** paste your live URL into https://www.pwabuilder.com to generate an Android package (Trusted Web Activity) and upload it with a Google Play developer account. Or wrap the site with Capacitor if you need native features such as push notifications.
 
-## 6. Owner and broker dashboard (`/dashboard`)
+## 6. My profile (`/profile`)
+
+Every logged-in user can edit their **name**, **mobile number** (filled in automatically when they post), **I am a…** (Tenant, Student, Owner or Broker / agent) and **city**. Open it by clicking your name in the header or **My profile** on the dashboard; it also has **Log out**. Users whose role is Broker get "Broker / agent" pre-selected when posting. The login email can't be changed there, and users can't unblock themselves (the database prevents it). Admins see each user's role, city and phone in **Admin → Users** and can filter by role.
+
+## 6b. Owner and broker dashboard (`/dashboard`)
 
 Owners and brokers use the same account type; when posting, they choose **Owner** or **Broker / agent**, and broker listings show a "Broker" label. In **My listings** each listing has:
 
@@ -119,7 +136,7 @@ Deleting an account completely is done in Supabase: **Authentication → Users**
 
 ```
 app/
-  pages/            index (home), rent (search), property/[id], post (6-step form),
+  pages/            index (home), rent (search), property/[id], post (6-step form, also edits), profile,
                     login, dashboard (my listings), admin (super admin), saved, terms, privacy
   components/       header, mobile tab bar, listing card, filters, map, etc.
   composables/      useSupabase, useAuth, useListings (Supabase or demo mode), useAdmin, useLeaflet

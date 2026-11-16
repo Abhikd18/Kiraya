@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { user, isAdmin, signOut } = useAuth()
+const { user, isAdmin } = useAuth()
 const route = useRoute()
 
 const links = computed(() => [
@@ -8,11 +8,6 @@ const links = computed(() => [
   { label: 'My listings', to: '/dashboard' },
   ...(isAdmin.value ? [{ label: 'Admin', to: '/admin' }] : [])
 ])
-
-async function logout() {
-  await signOut()
-  await navigateTo('/')
-}
 </script>
 
 <template>
@@ -40,7 +35,7 @@ async function logout() {
           Post
         </UButton>
         <template v-if="user">
-          <UButton color="neutral" variant="ghost" icon="i-lucide-log-out" class="hidden md:inline-flex" @click="logout">
+          <UButton to="/profile" color="neutral" variant="ghost" icon="i-lucide-circle-user-round" class="hidden md:inline-flex" aria-label="My profile">
             {{ user.name.split(' ')[0] }}
           </UButton>
         </template>

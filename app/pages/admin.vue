@@ -127,10 +127,20 @@ function del(l: Listing) {
 
 // ---------- users tab ----------
 const userQuery = ref('')
+const userRole = ref('all')
+const roleItems = [
+  { label: 'Everyone', value: 'all' },
+  ...USER_ROLES.map(r => ({ label: r.label, value: r.value })),
+  { label: 'Role not set', value: 'none' }
+]
 const filteredUsers = computed(() => {
   const q = userQuery.value.trim().toLowerCase()
-  return users.value.filter(u => !q || `${u.name} ${u.email}`.toLowerCase().includes(q))
+  return users.value.filter((u) => {
+    if (userRole.value === 'none' ? u.role : userRole.value !== 'all' && u.role !== userRole.value) return false
+    return !q || `${u.name} ${u.email} ${u.phone} ${u.city}`.toLowerCase().includes(q)
+  })
 })
+const roleCounts = computed(() => USER_ROLES.map(r => ({ ...r, count: users.value.filter(u => u.role === r.value).length })))
 function toggleBlocked(u: AdminUser) {
   if (u.id === user.value?.id) {
     toast.add({ title: 'You can\'t block your own account', color: 'warning' })
@@ -294,9 +304,23 @@ const date = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '
 
       <!-- Users -->
       <div v-else-if="tab === 'users'" class="space-y-4">
-        <UInput v-model="userQuery" icon="i-lucide-search" placeholder="Name or email" class="w-full sm:w-72" />
+        <div class="flex flex-wrap gap-2">
+          <UInput v-model="userQuery" icon="i-lucide-search" placeholder="Name, email, phone or city" class="w-full sm:w-72" />
+          <USelect v-model="userRole" :items="roleItems" class="w-full sm:w-48" />
+        </div>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <button
+            v-for="r in roleCounts"
+            :key="r.value"
+            type="button"
+            class="flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 hover:border-orange-400 dark:border-stone-700"
+            @click="userRole = r.value"
+          >
+            <UIcon :name="r.icon" class="size-4" /> {{ r.label }}: <strong>{{ r.count }}</strong>
+          </button>
+        </div>
         <p class="text-sm text-stone-500">
-          Everyone who has logged in: tenants, students and owners use the same kind of account.
+          Everyone who has logged in. Users pick Tenant, Student, Owner or Broker on their "My profile" page.
           To delete an account completely, use Supabase → Authentication → Users.
         </p>
         <ul class="divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-white dark:divide-stone-800 dark:border-stone-800 dark:bg-stone-900">
@@ -304,10 +328,13 @@ const date = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '
             <div class="min-w-0">
               <p class="flex flex-wrap items-center gap-2 font-semibold">
                 {{ u.name || '(no name)' }}
+                <UBadge v-if="u.role" color="neutral" variant="outline" :label="roleLabel(u.role)" />
                 <UBadge v-if="u.blocked" color="error" variant="soft" label="Blocked" />
                 <UBadge v-if="u.id === user.id" color="primary" variant="soft" label="You" />
               </p>
-              <p class="truncate text-sm text-stone-500">{{ u.email }} · joined {{ date(u.createdAt) }}</p>
+              <p class="truncate text-sm text-stone-500">
+                {{ u.email }}<template v-if="u.phone"> · {{ u.phone }}</template><template v-if="u.city"> · {{ u.city }}</template> · joined {{ date(u.createdAt) }}
+              </p>
               <p class="text-sm text-stone-500">{{ u.live }} live / {{ u.listings }} listing(s)</p>
             </div>
             <div class="flex gap-2">

@@ -74,6 +74,7 @@ watch(user, (u) => {
   if (editing) return
   if (u && !form.ownerName) form.ownerName = u.name
   if (u?.phone && !form.ownerPhone) form.ownerPhone = u.phone
+  if (u?.role === 'broker') form.postedBy = 'broker'
 }, { immediate: true })
 
 // ---- Edit mode: fill the form from the saved listing ----

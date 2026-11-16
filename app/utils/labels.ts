@@ -26,6 +26,17 @@ export const TENANT_PREFS: { value: TenantPreference, label: string }[] = [
   { value: 'working', label: 'Working professionals' }
 ]
 
+export const USER_ROLES: { value: 'tenant' | 'student' | 'owner' | 'broker', label: string, hint: string, icon: string }[] = [
+  { value: 'tenant', label: 'Tenant', hint: 'Looking for a home', icon: 'i-lucide-search' },
+  { value: 'student', label: 'Student', hint: 'Looking for a PG or room', icon: 'i-lucide-graduation-cap' },
+  { value: 'owner', label: 'Owner', hint: 'Renting out my property', icon: 'i-lucide-key-round' },
+  { value: 'broker', label: 'Broker / agent', hint: 'Listing for clients', icon: 'i-lucide-briefcase' }
+]
+
+export function roleLabel(r?: string | null) {
+  return USER_ROLES.find(x => x.value === r)?.label ?? ''
+}
+
 export const AMENITIES = [
   'Bike parking', 'Car parking', 'Power backup', 'Lift', 'Security / CCTV', 'Gated society',
   'Wi-Fi', 'Gym', 'Park nearby', 'Water 24x7', 'Balcony', 'Separate entry'
