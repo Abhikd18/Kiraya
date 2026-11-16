@@ -62,6 +62,10 @@ Resend only sends to other people from a **domain you own** (e.g. `kiraya.in`). 
 5. **Authentication → Rate Limits:** raise **Rate limit for sending emails** (e.g. 30 per hour).
 6. **Authentication → Emails → Templates → Magic Link:** add the 6-digit code to the body, for example `<p>Your Kiraya login code: <strong>{{ .Token }}</strong></p>`. The login page already has a code box.
 
+### Password login
+
+Any logged-in user can set a password in **My profile → Password** (at least 8 characters, letters and numbers) and then use **Log in with email and password** on the login page. There's no separate "forgot password" email: users log in with Google or an email link and set a new password in My profile. This needs the **Email** provider switched on in **Authentication → Sign In / Providers** (it is by default).
+
 ### Google login (optional, recommended)
 
 Go to **Authentication → Sign In / Providers → Google**, turn it on and paste a Client ID and Secret from Google Cloud Console (OAuth client, type "Web application"). Add the redirect URL that Supabase shows you to the Google OAuth client. Google login has no email limits.
@@ -97,7 +101,7 @@ The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings �
 
 ## 6. My profile (`/profile`)
 
-Every logged-in user can edit their **name**, **mobile number** (filled in automatically when they post), **I am a…** (Tenant, Student, Owner or Broker / agent) and **city**. Open it by clicking your name in the header or **My profile** on the dashboard; it also has **Log out**. Users whose role is Broker get "Broker / agent" pre-selected when posting. The login email can't be changed there, and users can't unblock themselves (the database prevents it). Admins see each user's role, city and phone in **Admin → Users** and can filter by role.
+Every logged-in user can set or change their **password** and edit their **name**, **mobile number** (filled in automatically when they post), **I am a…** (Tenant, Student, Owner or Broker / agent) and **city**. Open it by clicking your name in the header or **My profile** on the dashboard; it also has **Log out**. Users whose role is Broker get "Broker / agent" pre-selected when posting. The login email can't be changed there, and users can't unblock themselves (the database prevents it). Admins see each user's role, city and phone in **Admin → Users** and can filter by role.
 
 ## 6b. Owner and broker dashboard (`/dashboard`)
 

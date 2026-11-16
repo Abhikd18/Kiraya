@@ -3,8 +3,38 @@ import type { UserRole } from '~/composables/useAuth'
 
 useSeoMeta({ title: 'My profile | Kiraya', robots: 'noindex' })
 
-const { user, ready, isAdmin, init, updateProfile, signOut } = useAuth()
+const { user, ready, isAdmin, init, updateProfile, changePassword, signOut } = useAuth()
+const hasBackend = useHasBackend()
 const toast = useToast()
+
+// ---- Password (set the first time, or change) ----
+const pw = reactive({ next: '', confirm: '' })
+const showPw = ref(false)
+const savingPw = ref(false)
+const pwRules = computed(() => [
+  { ok: pw.next.length >= 8, text: 'At least 8 characters' },
+  { ok: /[A-Za-z]/.test(pw.next) && /\d/.test(pw.next), text: 'Letters and numbers' },
+  { ok: !!pw.next && pw.next === pw.confirm, text: 'Both boxes match' }
+])
+const pwValid = computed(() => pwRules.value.every(r => r.ok))
+
+async function savePassword() {
+  if (!pwValid.value) {
+    toast.add({ title: 'Check the password rules below the boxes', color: 'warning' })
+    return
+  }
+  savingPw.value = true
+  try {
+    await changePassword(pw.next)
+    pw.next = ''
+    pw.confirm = ''
+    toast.add({ title: 'Password saved', description: 'You can now log in with your email and this password.', color: 'success' })
+  } catch (e) {
+    toast.add({ title: 'Could not save the password', description: (e as Error).message, color: 'error' })
+  } finally {
+    savingPw.value = false
+  }
+}
 
 const form = reactive({ name: '', phone: '', role: '' as UserRole | '', city: '' })
 const saving = ref(false)
@@ -128,6 +158,40 @@ async function logout() {
             <UButton to="/dashboard" color="neutral" variant="outline" icon="i-lucide-house">My listings</UButton>
             <UButton color="neutral" variant="ghost" icon="i-lucide-log-out" @click="logout">Log out</UButton>
           </div>
+        </div>
+      </form>
+
+      <!-- Password -->
+      <form
+        v-if="hasBackend"
+        class="mt-6 space-y-4 rounded-2xl border border-stone-200 bg-white p-5 sm:p-8 dark:border-stone-800 dark:bg-stone-900"
+        @submit.prevent="savePassword"
+      >
+        <div>
+          <h2 class="flex items-center gap-2 text-lg font-semibold"><UIcon name="i-lucide-lock" class="size-5 text-orange-600" /> Password</h2>
+          <p class="text-sm text-stone-500">
+            Set a password to log in with your email and password, or change the one you have.
+            Forgot it? Log in with Google or an email link and set a new one here.
+          </p>
+        </div>
+        <!-- Lets password managers know which account this password belongs to -->
+        <input type="email" :value="user.email" autocomplete="username" class="hidden" readonly tabindex="-1" aria-hidden="true">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <UFormField label="New password">
+            <UInput v-model="pw.next" :type="showPw ? 'text' : 'password'" autocomplete="new-password" class="w-full" />
+          </UFormField>
+          <UFormField label="Type it again">
+            <UInput v-model="pw.confirm" :type="showPw ? 'text' : 'password'" autocomplete="new-password" class="w-full" />
+          </UFormField>
+        </div>
+        <ul class="space-y-1 text-sm">
+          <li v-for="r in pwRules" :key="r.text" class="flex items-center gap-2" :class="r.ok ? 'text-emerald-600' : 'text-stone-500'">
+            <UIcon :name="r.ok ? 'i-lucide-circle-check' : 'i-lucide-circle'" class="size-4" /> {{ r.text }}
+          </li>
+        </ul>
+        <div class="flex flex-wrap items-center gap-3">
+          <UButton type="submit" icon="i-lucide-key-round" :loading="savingPw" :disabled="!pwValid">Save password</UButton>
+          <UCheckbox v-model="showPw" label="Show password" />
         </div>
       </form>
     </template>

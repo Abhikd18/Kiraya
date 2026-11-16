@@ -141,6 +141,32 @@ export function useAuth() {
     if (error) throw error
   }
 
+  /** Log in with the password the user set on "My profile". */
+  async function signInWithPassword(email: string, password: string) {
+    if (!supabase) throw new Error('Password login needs Supabase to be connected.')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      if (/invalid login credentials/i.test(error.message)) {
+        throw new Error('Wrong email or password. If you have never set a password, log in with Google or an email link first, then set one in My profile.')
+      }
+      throw error
+    }
+    user.value = mapUser(data.user)
+    await afterLogin()
+  }
+
+  /** Sets a password the first time, or changes it later. The user must be logged in. */
+  async function changePassword(password: string) {
+    if (!supabase) throw new Error('Passwords need Supabase to be connected.')
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      if (/different from the old/i.test(error.message)) throw new Error('The new password must be different from your current one.')
+      if (/reauthentication|recent login/i.test(error.message)) throw new Error('For your safety, please log out and log in again, then change your password.')
+      if (/weak|pwned|leaked/i.test(error.message)) throw new Error('This password is too easy to guess. Use a longer one with letters and numbers.')
+      throw error
+    }
+  }
+
   async function verifyEmailCode(email: string, token: string) {
     if (!supabase) throw new Error('Email login needs Supabase to be connected.')
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
@@ -162,5 +188,5 @@ export function useAuth() {
     isAdmin.value = false
   }
 
-  return { user, ready, isAdmin, init, updateProfile, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
+  return { user, ready, isAdmin, init, updateProfile, signInWithPassword, changePassword, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn, signOut }
 }

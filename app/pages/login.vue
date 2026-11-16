@@ -4,11 +4,15 @@ useSeoMeta({ title: 'Log in | Kiraya' })
 const route = useRoute()
 const nextPath = computed(() => (typeof route.query.next === 'string' && route.query.next.startsWith('/') ? route.query.next : '/dashboard'))
 const hasBackend = useHasBackend()
-const { user, init, signInWithGoogle, sendEmailCode, verifyEmailCode, demoSignIn } = useAuth()
+const { user, init, signInWithGoogle, sendEmailCode, verifyEmailCode, signInWithPassword, demoSignIn } = useAuth()
 const toast = useToast()
 const authError = useState<string>('kiraya-auth-error', () => '')
 
 const email = ref('')
+const password = ref('')
+const showPassword = ref(false)
+/** 'link' = email me a login link, 'password' = email + password */
+const mode = ref<'link' | 'password'>('link')
 const code = ref('')
 const name = ref('')
 const codeSent = ref(false)
@@ -74,6 +78,22 @@ async function sendCode() {
   }
 }
 
+async function passwordLogin() {
+  if (!/^\S+@\S+\.\S+$/.test(email.value) || !password.value) {
+    toast.add({ title: 'Enter your email and password', color: 'warning' })
+    return
+  }
+  loading.value = true
+  try {
+    await signInWithPassword(email.value.trim(), password.value)
+    authError.value = ''
+  } catch (e) {
+    toast.add({ title: 'Could not log in', description: (e as Error).message, color: 'error' })
+  } finally {
+    loading.value = false
+  }
+}
+
 async function verify() {
   loading.value = true
   try {
@@ -116,11 +136,44 @@ function demoLogin() {
           <span class="h-px flex-1 bg-stone-200 dark:bg-stone-700" /> or use email <span class="h-px flex-1 bg-stone-200 dark:bg-stone-700" />
         </div>
 
-        <form v-if="!codeSent" class="space-y-3" @submit.prevent="sendCode">
+        <form v-if="!codeSent && mode === 'link'" class="space-y-3" @submit.prevent="sendCode">
           <UFormField label="Email">
             <UInput v-model="email" type="email" placeholder="you@example.com" size="lg" class="w-full" autocomplete="email" />
           </UFormField>
           <UButton type="submit" block size="lg" :loading="loading">Email me a login link</UButton>
+          <UButton block variant="link" color="neutral" icon="i-lucide-lock" @click="mode = 'password'">Log in with email and password</UButton>
+        </form>
+
+        <form v-else-if="!codeSent" class="space-y-3" @submit.prevent="passwordLogin">
+          <UFormField label="Email">
+            <UInput v-model="email" type="email" placeholder="you@example.com" size="lg" class="w-full" autocomplete="username" />
+          </UFormField>
+          <UFormField label="Password">
+            <UInput
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              size="lg"
+              class="w-full"
+              autocomplete="current-password"
+              :ui="{ trailing: 'pe-1' }"
+            >
+              <template #trailing>
+                <UButton
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </UInput>
+          </UFormField>
+          <UButton type="submit" block size="lg" :loading="loading">Log in</UButton>
+          <p class="text-center text-xs text-stone-500">
+            No password yet, or forgot it? Use the email link or Google, then set a new one in <strong>My profile</strong>.
+          </p>
+          <UButton block variant="link" color="neutral" icon="i-lucide-mail" @click="mode = 'link'">Email me a login link instead</UButton>
         </form>
 
         <form v-else class="space-y-3" @submit.prevent="verify">
