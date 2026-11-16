@@ -10,7 +10,7 @@ One Nuxt 4 codebase gives you:
 
 Stack: Nuxt 4 · Nuxt UI 4 · Tailwind 4 · Supabase (database, login, photo storage) · Leaflet + OpenStreetMap maps · Vercel hosting. Everything starts on free plans.
 
-- **Live site:** https://www.kiraya.live (`kiraya.live` redirects there; the old https://kiraya-one.vercel.app still works)
+- **Live site:** https://kiraya.live (`www.kiraya.live` redirects there; the old https://kiraya-one.vercel.app still works)
 - **Code:** https://github.com/Abhikd18/Kiraya (every push to `main` redeploys on Vercel)
 - **My profile:** `/profile` (see section 6) · **Owner and broker dashboard:** `/dashboard` (see section 6b)
 - **Super admin dashboard:** `/admin` (see section 7)
@@ -39,7 +39,7 @@ Without Supabase keys, Kiraya runs in **demo mode**: 12 sample Tricity listings,
    NUXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
    NUXT_PUBLIC_SITE_URL=http://localhost:3000
    ```
-5. **Authentication → URL Configuration:** set the Site URL to `https://www.kiraya.live`, and add `https://www.kiraya.live/**`, `https://kiraya.live/**`, `https://kiraya-one.vercel.app/**` and `http://localhost:3000/**` to Redirect URLs.
+5. **Authentication → URL Configuration:** set the Site URL to `https://kiraya.live`, and add `https://www.kiraya.live/**`, `https://kiraya.live/**`, `https://kiraya-one.vercel.app/**` and `http://localhost:3000/**` to Redirect URLs.
 6. Restart `pnpm dev`. The yellow demo banner disappears.
 
 ### Email login
@@ -88,11 +88,11 @@ git push
 
 ## 4. Vercel
 
-The project `kiraya` on the `abhikd18` Hobby account is connected to the GitHub repo, so every `git push` to `main` deploys https://www.kiraya.live automatically (about 1 minute).
+The project `kiraya` on the `abhikd18` Hobby account is connected to the GitHub repo, so every `git push` to `main` deploys https://kiraya.live automatically (about 1 minute).
 
-**Domain:** `kiraya.live` was bought at Hostinger. Its DNS stays at Hostinger (**hPanel → Domains → kiraya.live → DNS / Nameservers**) with two records: **A** `@` → `216.198.79.1` and **CNAME** `www` → `15a9393fc3974aed.vercel-dns-017.com` (values from Vercel → kiraya → Settings → Domains). Vercel redirects `kiraya.live` to `www.kiraya.live` and renews the HTTPS certificate automatically.
+**Domain:** `kiraya.live` was bought at Hostinger. Its DNS stays at Hostinger (**hPanel → Domains → kiraya.live → DNS / Nameservers**) with two records: **A** `@` → `216.198.79.1` and **CNAME** `www` → `15a9393fc3974aed.vercel-dns-017.com` (values from Vercel → kiraya → Settings → Domains). Vercel serves the site on `kiraya.live`, redirects `www.kiraya.live` to it (308, set in Vercel → Settings → Domains → www.kiraya.live → Edit), and renews the HTTPS certificate automatically.
 
-The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings → Environment Variables** (`NUXT_PUBLIC_SITE_URL` = `https://www.kiraya.live` for Production). If you change one there, redeploy (**Deployments → ⋯ → Redeploy**) for it to take effect.
+The three `NUXT_PUBLIC_…` values are set in **Vercel → kiraya → Settings → Environment Variables** (`NUXT_PUBLIC_SITE_URL` = `https://kiraya.live` for Production). If you change one there, redeploy (**Deployments → ⋯ → Redeploy**) for it to take effect.
 
 **Important:** Vercel's free Hobby plan is for personal, non-commercial use. It's fine while you build and test. Move to Vercel Pro (or another host) before you start charging for anything.
 
